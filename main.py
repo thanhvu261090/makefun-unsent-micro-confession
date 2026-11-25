@@ -20,8 +20,8 @@ MAX_CHARS = 260
 MAX_MESSAGE_CHARS = 200
 
 
-def gate_check(text):
-    """Enforce the kit gate exactly; raise ValueError on any failure."""
+def check_length(text):
+    """Gate: UTF-8 text of 1 to 260 characters, not only whitespace."""
     if not isinstance(text, str):
         raise ValueError("entry must be a string")
     if not (1 <= len(text) <= MAX_CHARS):
@@ -30,6 +30,17 @@ def gate_check(text):
         )
     if not text.strip():
         raise ValueError("entry must not be only whitespace")
+    if text != text.strip():
+        raise ValueError("entry must not have leading or trailing padding")
+    if "\r" in text:
+        raise ValueError("entry must not contain carriage returns")
+    if any(ord(ch) < 32 and ch not in "\n" for ch in text):
+        raise ValueError("entry must not contain control characters")
+    text.encode("utf-8")
+
+
+def check_two_parts(text):
+    """Gate: exactly two parts — a To: line and one message line."""
     lines = text.split("\n")
     if len(lines) != 2:
         raise ValueError("entry must be exactly two parts: a To: line "
@@ -39,8 +50,6 @@ def gate_check(text):
         raise ValueError("entry must start with a To: line")
     if not lines[0][4:].strip():
         raise ValueError("To: line must name someone")
-    if "\r" in text:
-        raise ValueError("entry must not contain carriage returns")
     if not lines[1].strip():
         raise ValueError("message line must not be blank")
     if len(lines[1]) > MAX_MESSAGE_CHARS:
@@ -48,11 +57,13 @@ def gate_check(text):
             "message must be at most 200 characters, got %d"
             % len(lines[1])
         )
-    if text != text.strip():
-        raise ValueError("entry must not have leading or trailing padding")
-    if any(ord(ch) < 32 and ch not in "\n" for ch in text):
-        raise ValueError("entry must not contain control characters")
-    text.encode("utf-8")
+    return lines
+
+
+def gate_check(text):
+    """Enforce the kit gate exactly; raise ValueError on any failure."""
+    check_length(text)
+    check_two_parts(text)
     return True
 
 
